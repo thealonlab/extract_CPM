@@ -18,6 +18,14 @@ def generate_excel(data_lines, output_excel_path):
 
     for line in data_lines:
         fields = line.split()
+        # Skip lines with invalid or unexpected data in the CPM field
+        try:
+            sample_number = int(fields[0])  # First column is the sample number
+            cpm_value = int(round(float(fields[4])))  # Fifth column is the CPM value
+        except (ValueError, IndexError):
+        # Skip this line if there's a conversion error or missing data
+            continue
+
         sample_number = int(fields[0])
         cpm_value = int(round(float(fields[4])))
 
