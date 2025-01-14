@@ -6,6 +6,7 @@ from openpyxl.styles import Font, Alignment
 import zipfile
 import io
 import os
+import re
 
 def generate_excel(data_lines, output_excel_path):
     """
@@ -79,7 +80,7 @@ def process_lines(content, prefix_to_strip, remove_line, replacements=None, line
     formatted_data_lines = []
     for line in data_lines:
         fields = line.split()
-        formatted_line = f"{fields[0]:<8} {fields[1].replace('**-', ''):<10} {fields[2]:<12} {fields[3]:<10} {fields[4]:<12} {fields[5]:<12} {fields[6]:<12} {fields[7]:<12}"
+        formatted_line = f"{fields[0]:<8} {re.sub(r"..-", "", fields[1]):<10} {fields[2]:<12} {fields[3]:<10} {fields[4]:<12} {fields[5]:<12} {fields[6]:<12} {fields[7]:<12}"
         formatted_data_lines.append(formatted_line)
 
     headers = f"{'Sample':<8} {'Position':<10} {'Time (min)':<12} {'H#':<10} {'CPM (3H)':<12} {'%Error (3H)':<12} {'%Lumex':<12} {'Elapsed time':<12}"
