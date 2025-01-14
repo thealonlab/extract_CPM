@@ -79,9 +79,9 @@ def process_lines(content, prefix_to_strip, remove_line, replacements=None, line
 
     return "\n".join(processed_lines + formatted_data_lines)
 
-st.title("Data Processing App")
+st.title("Extract CPM values from LS6500 output file")
 
-uploaded_file = st.file_uploader("Upload a RECORD file", type=["txt"])
+uploaded_file = st.file_uploader("Upload a RECORD.TXT file", type=["txt"])
 
 if uploaded_file is not None:
     content_bytes = uploaded_file.read()
