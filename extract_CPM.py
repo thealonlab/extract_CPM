@@ -103,7 +103,13 @@ if uploaded_file is not None:
     original_file_name = f"{current_date}_RECORD.txt"
     zip_file_name = f"{current_date}_RESULTS.zip"
 
-    search_string_bytes = b"\x1bx\x00\x1bt\x00\x1b7\x1bR\x00\x1b2\x12\x1bP\x1bQP\x1bW\x00\x1bH\x1b-\x00\x1bx\x00\x1bR\x00\x1b2\x12\x1bP\x1bQP\x0c"
+#    search_string_bytes = b"\x1bx\x00\x1bt\x00\x1b7\x1bR\x00\x1b2\x12\x1bP\x1bQP\x1bW\x00\x1bH\x1b-\x00\x1bx\x00\x1bR\x00\x1b2\x12\x1bP\x1bQP\x0c"
+    # Define possible search strings
+    search_strings = [
+        b"\x1bx \x1bt \x1b7\x1bR \x1b2\x12\x1bP\x1bQP\x1bW \x1bH\x1b- \x1bx \x1bR \x1b2\x12\x1bP\x1bQP\x0c",
+        b"\x1bx\x00\x1bt\x00\x1b7\x1bR\x00\x1b2\x12\x1bP\x1bQP\x1bW\x00\x1bH\x1b-\x00\x1bx\x00\x1bR\x00\x1b2\x12\x1bP\x1bQP\x0c"
+    ]
+
     remove_line = "  \x1bG  MISSING SAMPLE\x1bH"
     prefix_to_strip = "\x1bH"
     replacements = {
@@ -116,12 +122,30 @@ if uploaded_file is not None:
         b"\x01": ""
     }
 
-    last_occurrence_index = content_bytes.rfind(search_string_bytes)
+    #last_occurrence_index = content_bytes.rfind(search_string_bytes)
+    last_occurrence_index = -1 #new
+    selected_string = None #new
 
-    if last_occurrence_index != -1:
-        start_index = last_occurrence_index + len(search_string_bytes)
+
+    # Find the last occurrence of any search string
+    for search_string in search_strings:
+        index = content_bytes.rfind(search_string)
+        if index > last_occurrence_index:
+            last_occurrence_index = index
+            selected_string = search_string
+    # Handle case where no valid search string is found
+    if selected_string is None:
+        st.error("None of the expected search strings were found in the file.")
+    else:
+        start_index = last_occurrence_index + len(selected_string)
         trimmed_content_bytes = content_bytes[start_index:]
         trimmed_content = trimmed_content_bytes.decode("utf-8", errors="ignore")
+
+
+#    if last_occurrence_index != -1:
+#        start_index = last_occurrence_index + len(search_string_bytes)
+#        trimmed_content_bytes = content_bytes[start_index:]
+#        trimmed_content = trimmed_content_bytes.decode("utf-8", errors="ignore")
 
         filtered_content = process_lines(
             content=trimmed_content,
@@ -209,4 +233,5 @@ if uploaded_file is not None:
 #       )
 
     else:
-        st.error("The specified string was not found in the file.")
+        #st.error("The specified string was not found in the file.")
+        st.error("None of the expected search strings were found in the file.")
