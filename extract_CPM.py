@@ -232,6 +232,6 @@ if uploaded_file is not None:
 #           mime="application/zip"
 #       )
 
-    else:
+    #else:
         #st.error("The specified string was not found in the file.")
-        st.error("None of the expected search strings were found in the file.")
+     #   st.error("None of the expected search strings were found in the file.")
