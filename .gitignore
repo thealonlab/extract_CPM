@@ -1,5 +1,1 @@
-__pycache__/
-*.pyc
-.DS_Store
-.env
-.venv/
+extract_CPM_20250328.py

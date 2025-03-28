@@ -59,23 +59,42 @@ def process_lines(content, prefix_to_strip, remove_line, replacements=None, line
 
     for line in content.splitlines():
         line_counter += 1
-
+    
         if remove_line in line or "ELAPSED" in line or "NO         MIN" in line or "PAGE" in line:
             continue
-
+    
         line = line.lstrip(prefix_to_strip)
-
+    
         if replacements:
             for binary, replacement in replacements.items():
                 line = line.replace(binary.decode("utf-8", errors="ignore"), replacement)
+    
+        # Save to data_lines if it looks like a data line
+        if re.match(r"\s*\d+", line):  # Starts with sample number
+            data_lines.append(line)
+        else:
+            processed_lines.append(line)
+    
 
-        if line_counter > 2:
-            if line_counter > line_number_threshold and not line.strip():
-                continue
-            if line_counter < line_number_threshold:
-                processed_lines.append(line)
-            else:
-                data_lines.append(line)
+#    for line in content.splitlines():
+#        line_counter += 1
+#
+#        if remove_line in line or "ELAPSED" in line or "NO         MIN" in line or "PAGE" in line:
+#            continue
+#
+#        line = line.lstrip(prefix_to_strip)
+#
+#        if replacements:
+#            for binary, replacement in replacements.items():
+#                line = line.replace(binary.decode("utf-8", errors="ignore"), replacement)
+#
+#        if line_counter > 2:
+#            if line_counter > line_number_threshold and not line.strip():
+#                continue
+#            if line_counter < line_number_threshold:
+#                processed_lines.append(line)
+#            else:
+#                data_lines.append(line)
 
     formatted_data_lines = []
     for line in data_lines:
