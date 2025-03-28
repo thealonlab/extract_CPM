@@ -8,36 +8,62 @@ import io
 import os
 import re
 
-def generate_excel(data_lines, output_excel_path):
-    """
-    Generate an Excel sheet with CPM values arranged in a table with 18 columns.
-    """
-    rows = []
-    row_labels = []
-    col_labels = [i for i in range(1, 19)]
-    letters = {0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F", 6: "G", 7: "H"}
+def clean_and_extract_lines(content, prefix_to_strip, remove_line, replacements):
+    # Apply replacements to clean up binary characters
+    for binary, replacement in replacements.items():
+        content = content.replace(binary.decode("utf-8", errors="ignore"), replacement)
 
-    for line in data_lines:
-        fields = line.split()
-        # Skip lines with invalid or unexpected data in the CPM field
-        try:
-            sample_number = int(fields[0])  # First column is the sample number
-            cpm_value = int(round(float(fields[4])))  # Fifth column is the CPM value
-        except (ValueError, IndexError):
-        # Skip this line if there's a conversion error or missing data
+    # Remove non-printable characters
+    content = re.sub(r"[^\x20-\x7E\n]+", "", content)
+
+    processed_lines, data_lines = [], []
+    for line in content.splitlines():
+        if remove_line in line or "ELAPSED" in line or "NO         MIN" in line or "PAGE" in line:
             continue
 
-        sample_number = int(fields[0])
-        cpm_value = int(round(float(fields[4])))
+        line = line.lstrip(prefix_to_strip)
+
+        if not re.match(r"^\s*\d+", line):
+            processed_lines.append(line)
+            continue
+
+        fields = line.strip().split()
+        if len(fields) >= 5:
+            try:
+                sample_number = int(fields[0])
+                cpm_value = int(round(float(fields[4])))
+                data_lines.append(f"{sample_number:<8} {fields[1]:<10} {fields[2]:<12} {fields[3]:<10} {fields[4]:<12}")
+            except ValueError:
+                continue
+
+    headers = f"{'Sample':<8} {'Position':<10} {'Time (min)':<12} {'H#':<10} {'CPM (3H)':<12}"
+    return "\n".join(processed_lines + [headers] + data_lines)
+
+def generate_excel_from_clean_file(clean_file_path, output_excel_path):
+    rows = []
+    row_labels = []
+    col_labels = list(range(1, 19))
+    letters = {i: chr(65 + i) for i in range(8)}
+
+    with open(clean_file_path, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip() and not line.startswith("Sample")]
+
+    for line in lines:
+        fields = line.split()
+        try:
+            sample_number = int(fields[0])
+            cpm_value = int(round(float(fields[4])))
+        except (ValueError, IndexError):
+            continue
 
         row_index = (sample_number - 1) // 18
-        column_index = (sample_number - 1) % 18
+        col_index = (sample_number - 1) % 18
 
         while len(rows) <= row_index:
             rows.append([None] * 18)
-            row_labels.append(letters[len(row_labels) % 8])
+            row_labels.append(letters[len(row_labels)])
 
-        rows[row_index][column_index] = cpm_value
+        rows[row_index][col_index] = cpm_value
 
     df = pd.DataFrame(rows, columns=col_labels)
     df.insert(0, "", row_labels)
@@ -45,85 +71,25 @@ def generate_excel(data_lines, output_excel_path):
 
     workbook = load_workbook(output_excel_path)
     sheet = workbook.active
-
     for cell in sheet["A"]:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center")
-
     workbook.save(output_excel_path)
-
-def process_lines(content, prefix_to_strip, remove_line, replacements=None, line_number_threshold=15):
-    processed_lines = []
-    data_lines = []
-    line_counter = 0
-
-    for line in content.splitlines():
-        line_counter += 1
-    
-        if remove_line in line or "ELAPSED" in line or "NO         MIN" in line or "PAGE" in line:
-            continue
-    
-        line = line.lstrip(prefix_to_strip)
-    
-        if replacements:
-            for binary, replacement in replacements.items():
-                line = line.replace(binary.decode("utf-8", errors="ignore"), replacement)
-    
-        # Save to data_lines if it looks like a data line
-        if re.match(r"\s*\d+", line):  # Starts with sample number
-            data_lines.append(line)
-        else:
-            processed_lines.append(line)
-    
-
-#    for line in content.splitlines():
-#        line_counter += 1
-#
-#        if remove_line in line or "ELAPSED" in line or "NO         MIN" in line or "PAGE" in line:
-#            continue
-#
-#        line = line.lstrip(prefix_to_strip)
-#
-#        if replacements:
-#            for binary, replacement in replacements.items():
-#                line = line.replace(binary.decode("utf-8", errors="ignore"), replacement)
-#
-#        if line_counter > 2:
-#            if line_counter > line_number_threshold and not line.strip():
-#                continue
-#            if line_counter < line_number_threshold:
-#                processed_lines.append(line)
-#            else:
-#                data_lines.append(line)
-
-    formatted_data_lines = []
-    for line in data_lines:
-        fields = line.split()
-        formatted_line = f"{fields[0]:<8} {re.sub(r"..-", "", fields[1]):<10} {fields[2]:<12} {fields[3]:<10} {fields[4]:<12} {fields[5]:<12} {fields[6]:<12} {fields[7]:<12}"
-        formatted_data_lines.append(formatted_line)
-
-    headers = f"{'Sample':<8} {'Position':<10} {'Time (min)':<12} {'H#':<10} {'CPM (3H)':<12} {'%Error (3H)':<12} {'%Lumex':<12} {'Elapsed time':<12}"
-    formatted_data_lines.insert(0, headers)
-
-    return "\n".join(processed_lines + formatted_data_lines)
 
 st.title("Extract CPM values from LS6500 output file")
 
 uploaded_file = st.file_uploader("Upload a RECORD.TXT file", type=["txt"])
 
-if uploaded_file is not None:
+if uploaded_file:
     content_bytes = uploaded_file.read()
     original_content = content_bytes.decode("utf-8", errors="ignore")
 
-    # File naming
-    current_date = datetime.now().strftime("%Y%m%d")
-    clean_file_name = f"{current_date}_RECORD_clean.txt"
-    excel_file_name = f"{current_date}_RESULTS.xlsx"
-    original_file_name = f"{current_date}_RECORD.txt"
-    zip_file_name = f"{current_date}_RESULTS.zip"
+    now = datetime.now().strftime("%Y%m%d")
+    clean_file_name = f"{now}_RECORD_clean.txt"
+    excel_file_name = f"{now}_RESULTS.xlsx"
+    original_file_name = f"{now}_RECORD.txt"
+    zip_file_name = f"{now}_RESULTS.zip"
 
-#    search_string_bytes = b"\x1bx\x00\x1bt\x00\x1b7\x1bR\x00\x1b2\x12\x1bP\x1bQP\x1bW\x00\x1bH\x1b-\x00\x1bx\x00\x1bR\x00\x1b2\x12\x1bP\x1bQP\x0c"
-    # Define possible search strings
     search_strings = [
         b"\x1bx \x1bt \x1b7\x1bR \x1b2\x12\x1bP\x1bQP\x1bW \x1bH\x1b- \x1bx \x1bR \x1b2\x12\x1bP\x1bQP\x0c",
         b"\x1bx\x00\x1bt\x00\x1b7\x1bR\x00\x1b2\x12\x1bP\x1bQP\x1bW\x00\x1bH\x1b-\x00\x1bx\x00\x1bR\x00\x1b2\x12\x1bP\x1bQP\x0c"
@@ -132,76 +98,32 @@ if uploaded_file is not None:
     remove_line = "  \x1bG  MISSING SAMPLE\x1bH"
     prefix_to_strip = "\x1bH"
     replacements = {
-        b"\x1bG": "",
-        b"\x1bH": "",
-        b"\x1bW": "",
-        b"\x1b-": "",
-        b"\x1b ": "",
-        b"\x00 ": "",
-        b"\x01": ""
+        b"\x1bG": "", b"\x1bH": "", b"\x1bW": "", b"\x1b-": "",
+        b"\x1b ": "", b"\x00 ": "", b"\x01": ""
     }
 
-    #last_occurrence_index = content_bytes.rfind(search_string_bytes)
-    last_occurrence_index = -1 #new
-    selected_string = None #new
+    last_index, selected_string = -1, None
+    for s in search_strings:
+        index = content_bytes.rfind(s)
+        if index > last_index:
+            last_index = index
+            selected_string = s
 
-
-    # Find the last occurrence of any search string
-    for search_string in search_strings:
-        index = content_bytes.rfind(search_string)
-        if index > last_occurrence_index:
-            last_occurrence_index = index
-            selected_string = search_string
-    # Handle case where no valid search string is found
     if selected_string is None:
         st.error("None of the expected search strings were found in the file.")
     else:
-        start_index = last_occurrence_index + len(selected_string)
-        trimmed_content_bytes = content_bytes[start_index:]
-        trimmed_content = trimmed_content_bytes.decode("utf-8", errors="ignore")
+        start_index = last_index + len(selected_string)
+        trimmed = content_bytes[start_index:].decode("utf-8", errors="ignore")
 
+        filtered_content = clean_and_extract_lines(trimmed, prefix_to_strip, remove_line, replacements)
+        with open(clean_file_name, "w", encoding="utf-8") as f:
+            f.write(filtered_content)
 
-#    if last_occurrence_index != -1:
-#        start_index = last_occurrence_index + len(search_string_bytes)
-#        trimmed_content_bytes = content_bytes[start_index:]
-#        trimmed_content = trimmed_content_bytes.decode("utf-8", errors="ignore")
+        generate_excel_from_clean_file(clean_file_name, excel_file_name)
 
-        filtered_content = process_lines(
-            content=trimmed_content,
-            prefix_to_strip=prefix_to_strip,
-            remove_line=remove_line,
-            replacements=replacements
-        )
-
-        data_lines = filtered_content.splitlines()[13:]
-
-        # Save outputs
-        with open(clean_file_name, "w", encoding="utf-8") as clean_file:
-            clean_file.write(filtered_content)
-
-        generate_excel(data_lines, excel_file_name)
-
-        # Download buttons
-        st.download_button(
-            label="Download Cleaned Text File",
-            data=filtered_content,
-            file_name=clean_file_name,
-            mime="text/plain"
-        )
-
-        st.download_button(
-            label="Download Results Excel File",
-            data=open(excel_file_name, "rb").read(),
-            file_name=excel_file_name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-        st.download_button(
-            label="Download Original File",
-            data=original_content,
-            file_name=original_file_name,
-            mime="text/plain"
-        )
+        st.download_button("Download Cleaned Text File", filtered_content, clean_file_name, mime="text/plain")
+        st.download_button("Download Results Excel File", open(excel_file_name, "rb").read(), excel_file_name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button("Download Original File", original_content, original_file_name, mime="text/plain")
         
         # Check if cleaned_output_path exists
         if not os.path.exists(clean_file_name):
@@ -215,42 +137,15 @@ if uploaded_file is not None:
         else:
             st.success(f"Excel file found: {excel_file_name}")
         
-        # Create a ZIP archive containing all outputs
-        zip_buffer = io.BytesIO()  # In-memory buffer for the ZIP file
+  
+        # ZIP creation
+        zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zipf:
-            # Add original uploaded file to the ZIP
-            zipf.writestr(f"{current_date}_RECORD.txt", uploaded_file.getvalue())
-            
-            # Add cleaned and Excel files only if they exist
+            zipf.writestr(original_file_name, uploaded_file.getvalue())
             if os.path.exists(clean_file_name):
-                zipf.write(clean_file_name, arcname=f"{current_date}_RECORD_clean.txt")
+                zipf.write(clean_file_name, arcname=clean_file_name)
             if os.path.exists(excel_file_name):
-                zipf.write(excel_file_name, arcname=f"{current_date}_RESULTS.xlsx")
-        zip_buffer.seek(0)  # Rewind the buffer
-        
-        # Add a download button for the ZIP file
-        st.download_button(
-            label="Download All Outputs (ZIP)",
-            data=zip_buffer,
-            file_name=zip_file_name,
-            mime="application/zip"
-        )
-#       # Create a ZIP archive containing all outputs
-#       zip_buffer = io.BytesIO()  # In-memory buffer for the ZIP file
-#       with zipfile.ZipFile(zip_buffer, "w") as zipf:
-#           zipf.writestr(f"{current_date}_RECORD.txt", uploaded_file.getvalue())
-#           zipf.write(cleaned_output_path, arcname=f"{current_date}_RECORD_clean.txt")
-#           zipf.write(excel_output_path, arcname=f"{current_date}_RESULTS.xlsx")
-#           zip_buffer.seek(0)  # Rewind the buffer
+                zipf.write(excel_file_name, arcname=excel_file_name)
+        zip_buffer.seek(0)
 
-#       # Add a download button for the ZIP file
-#       st.download_button(
-#           label="Download All Outputs (ZIP)",
-#           data=zip_buffer,
-#           file_name=zip_file_name,
-#           mime="application/zip"
-#       )
-
-    #else:
-        #st.error("The specified string was not found in the file.")
-     #   st.error("None of the expected search strings were found in the file.")
+        st.download_button("Download All Outputs (ZIP)", zip_buffer, file_name=zip_file_name, mime="application/zip")
