@@ -31,13 +31,20 @@ def clean_and_extract_lines(content, prefix_to_strip, remove_line, replacements)
         if len(fields) >= 5:
             try:
                 sample_number = int(fields[0])
+                sample_id = fields[1]
+                time_min = fields[2]
+                h_val = fields[3]
                 cpm_value = int(round(float(fields[4])))
-                data_lines.append(f"{sample_number:<8} {fields[1]:<10} {fields[2]:<12} {fields[3]:<10} {fields[4]:<12}")
+
+                # Only include sample IDs matching patterns like **-1 or 17-1
+                if re.match(r"^(\*\*-\d+|\d+-\d+)$", sample_id):
+                    data_lines.append(f"{sample_number:<8} {sample_id:<10} {time_min:<12} {h_val:<10} {fields[4]:<12}")
             except ValueError:
                 continue
 
     headers = f"{'Sample':<8} {'Position':<10} {'Time (min)':<12} {'H#':<10} {'CPM (3H)':<12}"
     return "\n".join(processed_lines + [headers] + data_lines)
+
 
 def generate_excel_from_clean_file(clean_file_path, output_excel_path):
     rows = []
