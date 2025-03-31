@@ -43,7 +43,7 @@ def generate_excel_from_clean_file(clean_file_path, output_excel_path):
     rows = []
     row_labels = []
     col_labels = list(range(1, 19))
-    letters = {i: chr(65 + i) for i in range(8)}
+    letters = [chr(65 + i) for i in range(8)]  # ['A', 'B', ..., 'H']
 
     with open(clean_file_path, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip() and not line.startswith("Sample")]
@@ -61,7 +61,7 @@ def generate_excel_from_clean_file(clean_file_path, output_excel_path):
 
         while len(rows) <= row_index:
             rows.append([None] * 18)
-            row_labels.append(letters[len(row_labels)])
+            row_labels.append(letters[len(row_labels) % 8])
 
         rows[row_index][col_index] = cpm_value
 
