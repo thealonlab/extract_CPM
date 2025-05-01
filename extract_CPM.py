@@ -114,26 +114,27 @@ if uploaded_file:
             selected_string = s
 
     if selected_string is None:
-        st.error("None of the expected search strings were found in the file.")
+        st.warning("No known marker found — using entire file after decoding.")
+        trimmed = content_bytes.decode("utf-8", errors="ignore")
     else:
         start_index = last_index + len(selected_string)
         trimmed = content_bytes[start_index:].decode("utf-8", errors="ignore")
 
-        filtered_content = clean_and_extract_lines(trimmed, prefix_to_strip, remove_line, replacements)
-        with open(clean_file_name, "w", encoding="utf-8") as f:
-            f.write(filtered_content)
+    filtered_content = clean_and_extract_lines(trimmed, prefix_to_strip, remove_line, replacements)
+    with open(clean_file_name, "w", encoding="utf-8") as f:
+        f.write(filtered_content)
 
-        generate_excel_from_clean_file(clean_file_name, excel_file_name)
+    generate_excel_from_clean_file(clean_file_name, excel_file_name)
 
-        st.download_button("Download Cleaned Text File", filtered_content, clean_file_name, mime="text/plain")
-        st.download_button("Download Results Excel File", open(excel_file_name, "rb").read(), os.path.basename(excel_file_name), mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        st.download_button("Download Original File", original_content, original_file_name, mime="text/plain")
+    st.download_button("Download Cleaned Text File", filtered_content, clean_file_name, mime="text/plain")
+    st.download_button("Download Results Excel File", open(excel_file_name, "rb").read(), os.path.basename(excel_file_name), mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    st.download_button("Download Original File", original_content, original_file_name, mime="text/plain")
 
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zipf:
-            zipf.writestr(original_file_name, uploaded_file.getvalue())
-            zipf.write(clean_file_name, arcname=os.path.basename(clean_file_name))
-            zipf.write(excel_file_name, arcname=os.path.basename(excel_file_name))
-        zip_buffer.seek(0)
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zipf:
+        zipf.writestr(original_file_name, uploaded_file.getvalue())
+        zipf.write(clean_file_name, arcname=os.path.basename(clean_file_name))
+        zipf.write(excel_file_name, arcname=os.path.basename(excel_file_name))
+    zip_buffer.seek(0)
 
-        st.download_button("Download All Outputs (ZIP)", zip_buffer, file_name=zip_file_name, mime="application/zip")
+    st.download_button("Download All Outputs (ZIP)", zip_buffer, file_name=zip_file_name, mime="application/zip")
