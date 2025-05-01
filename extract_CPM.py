@@ -82,9 +82,10 @@ def generate_excel_from_clean_file(clean_file_path, output_excel_path):
 # Streamlit UI
 st.title("Extract CPM values from LS6500 output file")
 
-uploaded_file = st.file_uploader("Upload a RECORD.TXT file", type=["txt", "TXT"])
+uploaded_file = st.file_uploader("Upload a LS6500 output file", type=["txt", "TXT"])
 
 if uploaded_file:
+    uploaded_file.name = "record.txt" 
     content_bytes = uploaded_file.read()
     original_content = content_bytes.decode("utf-8", errors="ignore")
 
