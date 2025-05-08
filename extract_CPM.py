@@ -108,17 +108,19 @@ def create_and_populate_excel(cleaned_text, excel_path):
 
 st.title("Extract CPM values from LS6500 output file")
 
+uploaded_file = st.file_uploader("Upload a RECORD.TXT file", type=["txt"])
+#uploaded_file = st.file_uploader("Upload LS6500 output file", type=["txt", "TXT", "Txt"])
 
-uploaded_file = st.file_uploader("Upload LS6500 output file", type=["txt", "TXT", "Txt"])
-
-if uploaded_file:
+if uploaded_file is not None:
     content_bytes = uploaded_file.read()
     original_content = content_bytes.decode("utf-8", errors="ignore")
 
-    now = datetime.now().strftime("%Y%m%d")
-    clean_file_name = f"{now}_RECORD_clean.txt"
-    excel_file_name = f"{now}_RESULTS.xlsx"
-    zip_file_name = f"{now}_RESULTS.zip"
+    # File naming
+    current_date = datetime.now().strftime("%Y%m%d")
+    clean_file_name = f"{current_date}_RECORD_clean.txt"
+    excel_file_name = f"{current_date}_RESULTS.xlsx"
+    original_file_name = f"{current_date}_RECORD.txt"
+    zip_file_name = f"{current_date}_RESULTS.zip"
 
     cleaned_text, error_msg = trim_lsc_output_from_stream(content_bytes)
     if error_msg:
@@ -130,7 +132,7 @@ if uploaded_file:
 
         st.download_button("Download Cleaned Text File", cleaned_text, clean_file_name, mime="text/plain")
         st.download_button("Download Results Excel File", open(excel_file_name, "rb").read(), excel_file_name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        st.download_button("Download Original File", original_content, f"{now}_RECORD.txt", mime="text/plain")
+        st.download_button("Download Original File", original_content, f"{current_date}_RECORD.txt", mime="text/plain")
 
 
         # Check if cleaned_output_path exists
@@ -148,7 +150,7 @@ if uploaded_file:
 
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zipf:
-            zipf.writestr(f"{now}_RECORD.txt", original_content)
+            zipf.writestr(f"{current_date}_RECORD.txt", original_content)
             if os.path.exists(clean_file_name):
                 zipf.write(clean_file_name, arcname=clean_file_name)
             if os.path.exists(excel_file_name):
