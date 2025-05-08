@@ -108,8 +108,7 @@ def create_and_populate_excel(cleaned_text, excel_path):
 
 st.title("Extract CPM values from LS6500 output file")
 
-uploaded_file = st.file_uploader("Upload a RECORD.TXT file", type=["txt"])
-#uploaded_file = st.file_uploader("Upload LS6500 output file", type=["txt", "TXT", "Txt"])
+uploaded_file = st.file_uploader("Upload a RECORD.TXT file", type=["txt", "TXT"])
 
 if uploaded_file is not None:
     content_bytes = uploaded_file.read()
