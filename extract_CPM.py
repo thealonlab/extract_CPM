@@ -108,7 +108,7 @@ def create_and_populate_excel(cleaned_text, excel_path):
 
 st.title("Extract CPM values from LS6500 output file")
 
-uploaded_file = st.file_uploader("Upload a RECORD.TXT file - no case is best")
+uploaded_file = st.file_uploader("Upload a RECORD.TXT file - Only the last dataset is processed - if you need previous datasets, edit input file")
 
 if uploaded_file is not None:
     if not uploaded_file.name.lower().endswith(".txt"):
