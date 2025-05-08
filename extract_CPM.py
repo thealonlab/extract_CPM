@@ -108,52 +108,56 @@ def create_and_populate_excel(cleaned_text, excel_path):
 
 st.title("Extract CPM values from LS6500 output file")
 
-uploaded_file = st.file_uploader("Upload a RECORD.TXT file - lowercase is best", type=["TXT"])
+uploaded_file = st.file_uploader("Upload a RECORD.TXT file - no case is best")
 
 if uploaded_file is not None:
-    content_bytes = uploaded_file.read()
-    original_content = content_bytes.decode("utf-8", errors="ignore")
-
-    # File naming
-    current_date = datetime.now().strftime("%Y%m%d")
-    clean_file_name = f"{current_date}_RECORD_clean.txt"
-    excel_file_name = f"{current_date}_RESULTS.xlsx"
-    original_file_name = f"{current_date}_RECORD.txt"
-    zip_file_name = f"{current_date}_RESULTS.zip"
-
-    cleaned_text, error_msg = trim_lsc_output_from_stream(content_bytes)
-    if error_msg:
-        st.error(error_msg)
-    else:
-        with open(clean_file_name, "w", encoding="utf-8") as f:
-            f.write(cleaned_text)
-        create_and_populate_excel(cleaned_text, excel_file_name)
-
-        st.download_button("Download Cleaned Text File", cleaned_text, clean_file_name, mime="text/plain")
-        st.download_button("Download Results Excel File", open(excel_file_name, "rb").read(), excel_file_name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        st.download_button("Download Original File", original_content, f"{current_date}_RECORD.txt", mime="text/plain")
-
-
-        # Check if cleaned_output_path exists
-        if not os.path.exists(clean_file_name):
-            st.error(f"Cleaned file not found: {clean_file_name}")
+    if not uploaded_file.name.lower().endswith(".txt"):
+        st.error("Only .txt files are supported. Please rename the file accordingly.")
+    else:                
+        content_bytes = uploaded_file.read()
+        original_content = content_bytes.decode("utf-8", errors="ignore")
+    
+        # File naming
+        current_date = datetime.now().strftime("%Y%m%d")
+        clean_file_name = f"{current_date}_RECORD_clean.txt"
+        excel_file_name = f"{current_date}_RESULTS.xlsx"
+        original_file_name = f"{current_date}_RECORD.txt"
+        zip_file_name = f"{current_date}_RESULTS.zip"
+    
+        cleaned_text, error_msg = trim_lsc_output_from_stream(content_bytes)
+        if error_msg:
+            st.error(error_msg)
         else:
-            st.success(f"Cleaned file found: {clean_file_name}")
-        
-        # Check if excel_output_path exists
-        if not os.path.exists(excel_file_name):
-            st.error(f"Excel file not found: {excel_file_name}")
-        else:
-            st.success(f"Excel file found: {excel_file_name}")
-  
-
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zipf:
-            zipf.writestr(f"{current_date}_RECORD.txt", original_content)
-            if os.path.exists(clean_file_name):
-                zipf.write(clean_file_name, arcname=clean_file_name)
-            if os.path.exists(excel_file_name):
-                zipf.write(excel_file_name, arcname=excel_file_name)
-        zip_buffer.seek(0)
-
-        st.download_button("Download All Outputs (ZIP)", zip_buffer, file_name=zip_file_name, mime="application/zip")
+            with open(clean_file_name, "w", encoding="utf-8") as f:
+                f.write(cleaned_text)
+            create_and_populate_excel(cleaned_text, excel_file_name)
+    
+            st.download_button("Download Cleaned Text File", cleaned_text, clean_file_name, mime="text/plain")
+            st.download_button("Download Results Excel File", open(excel_file_name, "rb").read(), excel_file_name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            st.download_button("Download Original File", original_content, f"{current_date}_RECORD.txt", mime="text/plain")
+    
+    
+            # Check if cleaned_output_path exists
+            if not os.path.exists(clean_file_name):
+                st.error(f"Cleaned file not found: {clean_file_name}")
+            else:
+                st.success(f"Cleaned file found: {clean_file_name}")
+            
+            # Check if excel_output_path exists
+            if not os.path.exists(excel_file_name):
+                st.error(f"Excel file not found: {excel_file_name}")
+            else:
+                st.success(f"Excel file found: {excel_file_name}")
+      
+    
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w") as zipf:
+                zipf.writestr(f"{current_date}_RECORD.txt", original_content)
+                if os.path.exists(clean_file_name):
+                    zipf.write(clean_file_name, arcname=clean_file_name)
+                if os.path.exists(excel_file_name):
+                    zipf.write(excel_file_name, arcname=excel_file_name)
+            zip_buffer.seek(0)
+    
+            st.download_button("Download All Outputs (ZIP)", zip_buffer, file_name=zip_file_name, mime="application/zip")
+    
